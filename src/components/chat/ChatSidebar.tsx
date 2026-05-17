@@ -2,25 +2,38 @@
 
 import { useState } from 'react';
 import { useChatStore } from '@/lib/store';
-import { searchUsers } from '@/actions/chat';
+import { searchUsers, createChatOrInvite } from '@/actions/chat';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Search, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ChatSidebar() {
-  const { chats, activeChat, setActiveChat, onlineUsers } = useChatStore();
+  const { chats, activeChat, setActiveChat, onlineUsers, currentUser } = useChatStore();
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
   const handleSearch = async (val: string) => {
     setSearch(val);
-    if (val.length > 2) {
+    if (val.length >= 2) {
       const results = await searchUsers(val);
       setSearchResults(results);
     } else {
       setSearchResults([]);
+    }
+  };
+
+  const handleCreateChat = async (targetPhone: string) => {
+    if (!currentUser) return;
+    const res = await createChatOrInvite(currentUser.id, targetPhone);
+    if (res.chatId) {
+      setActiveChat(res.chatId);
+      setSearch('');
+      setSearchResults([]);
+    } else if (res.invited) {
+      alert(`Invitation sent to ${targetPhone}!`);
     }
   };
 
@@ -48,25 +61,41 @@ export default function ChatSidebar() {
       {/* Conversations List */}
       <ScrollArea className="flex-1">
         <div className="px-3 pb-6 space-y-1">
-          {search.length > 2 ? (
+          {search.length >= 2 ? (
             <div className="space-y-1">
               <p className="px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Search Results</p>
-              {searchResults.map((user) => (
-                <button
-                  key={user.id}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-all group"
-                  onClick={() => {/* Logic to start/select chat */}}
-                >
-                  <Avatar className="w-12 h-12 border-2 border-white shadow-sm">
-                    <AvatarImage src={user.avatar_url} />
-                    <AvatarFallback>{user.username[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="text-left flex-1 min-w-0">
-                    <p className="font-semibold text-slate-800 truncate">@{user.username}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user.full_name || 'New User'}</p>
-                  </div>
-                </button>
-              ))}
+              {searchResults.length > 0 ? (
+                searchResults.map((user) => (
+                  <button
+                    key={user.id}
+                    className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-all group"
+                    onClick={() => handleCreateChat(user.phone_number)}
+                  >
+                    <Avatar className="w-12 h-12 border-2 border-white shadow-sm">
+                      <AvatarImage src={user.avatar_url} />
+                      <AvatarFallback>{user.username[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="text-left flex-1 min-w-0">
+                      <p className="font-semibold text-slate-800 truncate">@{user.username}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user.full_name || 'New User'}</p>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="p-4 text-center space-y-3">
+                  <p className="text-sm text-muted-foreground">User not found.</p>
+                  {/^\+91\d{10}$/.test(search) && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="rounded-full"
+                      onClick={() => handleCreateChat(search)}
+                    >
+                      Invite {search}
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-1">

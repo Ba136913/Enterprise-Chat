@@ -9,18 +9,30 @@ import { Label } from '@/components/ui/label';
 
 export default function RegisterForm() {
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState('+91');
   const [otp, setOtp] = useState('');
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val.startsWith('+91')) {
+      setPhone(val);
+    } else if (val === '' || val === '+') {
+      setPhone('+91');
+    } else {
+      setPhone('+91' + val.replace(/\D/g, ''));
+    }
+  };
+
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone.startsWith('+')) {
-      setError('Invalid format. Use country code (e.g., +919876543210)');
+    if (phone.length < 13) {
+      setError('Please enter a valid 10-digit phone number after +91');
       return;
     }
+
     setIsLoading(true);
     setError('');
     const res = await signUpWithPhone(phone);
@@ -56,7 +68,7 @@ export default function RegisterForm() {
                 id="phone" 
                 placeholder="+91 98765 43210" 
                 value={phone} 
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={handlePhoneChange}
                 required 
               />
             </div>
